@@ -4,22 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HomeController
-// ─────────────────────────────────────────────────────────────────────────────
-class HomeController extends GetxController with GetTickerProviderStateMixin {
-  // ── Tab ──────────────────────────────────────────────────────────────────
+class HomeController extends GetxController
+    with GetSingleTickerProviderStateMixin {
   late TabController tabController;
 
-  // Tabs: first tab is always "All", rest come from API categories
   final List<String> tabs = [];
+  var isLoading = true.obs;
+  var errorMessage = Rxn<String>();
+  var allProducts = <Product>[].obs;
 
-  // ── State ────────────────────────────────────────────────────────────────
-  bool isLoading = true;
-  String? errorMessage;
-  List<Product> allProducts = [];
-
-  // ── API ───────────────────────────────────────────────────────────────────
   static const String _apiUrl = 'https://fakestoreapi.com/products';
 
   @override
@@ -34,22 +27,17 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
     super.onClose();
   }
 
-  // ── Fetch from API ────────────────────────────────────────────────────────
   Future<void> fetchProducts() async {
-    isLoading = true;
-    errorMessage = null;
-    update();
+    isLoading.value = true;
+    errorMessage.value = null;
 
     try {
-      final response = await http
-          .get(Uri.parse(_apiUrl))
-          .timeout(const Duration(seconds: 15));
+      final response = await http.get(Uri.parse(_apiUrl));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
-        allProducts = jsonList.map((j) => Product.fromJson(j)).toList();
+        allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
 
-        // Build tabs: All + unique categories (title-cased)
         final categories = allProducts.map((p) => p.category).toSet().toList();
 
         tabs
@@ -57,35 +45,54 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
           ..add('All')
           ..addAll(categories.map(_titleCase));
 
-        // Init TabController after we know tab count
         tabController = TabController(length: tabs.length, vsync: this);
-        isLoading = false;
+        isLoading.value = false;
       } else {
-        errorMessage = 'Server error: ${response.statusCode}';
-        isLoading = false;
+        errorMessage.value = 'Server error: ${response.statusCode}';
+        isLoading.value = false;
       }
     } catch (e) {
-      errorMessage = 'Failed to load products. Check your connection.';
-      isLoading = false;
+      errorMessage.value = 'Failed to load products. Check your connection.';
+      isLoading.value = false;
     }
-
-    update();
   }
 
-  // ── Pull-to-Refresh ───────────────────────────────────────────────────────
   Future<void> onRefresh() async {
     await fetchProducts();
   }
 
-  // ── Products for a given tab index ───────────────────────────────────────
-  // Safe: called from GetBuilder, never mid-layout.
+  var searchQuery = ''.obs;
+
   List<Product> getProductsForTab(int tabIndex) {
-    if (tabs.isEmpty || tabIndex == 0) return allProducts;
-    final category = tabs[tabIndex].toLowerCase();
-    return allProducts.where((p) => p.category == category).toList();
+    List<Product> products;
+
+    if (tabs.isEmpty || tabIndex == 0) {
+      products = allProducts;
+    } else {
+      final category = tabs[tabIndex].toLowerCase();
+      products = allProducts.where((p) => p.category == category).toList();
+    }
+
+    if (searchQuery.value.isNotEmpty) {
+      products = products
+          .where(
+            (p) =>
+                p.title.toLowerCase().contains(searchQuery.value.toLowerCase()),
+          )
+          .toList();
+    }
+
+    return products;
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  void onSearch(String query) {
+    searchQuery.value = query;
+  }
+
+  void clearSearch() {
+    searchQuery.value = '';
+  }
+
   String _titleCase(String s) {
     if (s.isEmpty) return s;
     return s
