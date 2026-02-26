@@ -10,6 +10,7 @@ class HomeController extends GetxController
 
   final List<String> tabs = [];
   var isLoading = true.obs;
+  var isRefreshing = false.obs; // ← drives the spin animation
   var errorMessage = Rxn<String>();
   var allProducts = <Product>[].obs;
 
@@ -27,6 +28,10 @@ class HomeController extends GetxController
     super.onClose();
   }
 
+  void startRefreshAnimation() {
+    isRefreshing.value = true;
+  }
+
   Future<void> fetchProducts() async {
     isLoading.value = true;
     errorMessage.value = null;
@@ -35,6 +40,7 @@ class HomeController extends GetxController
       final response = await http.get(Uri.parse(_apiUrl));
 
       if (response.statusCode == 200) {
+        print('Raw response: ${response.body}'); // ← Debug log
         final List<dynamic> jsonList = json.decode(response.body);
         allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
 
@@ -58,7 +64,35 @@ class HomeController extends GetxController
   }
 
   Future<void> onRefresh() async {
-    await fetchProducts();
+    isRefreshing.value = true;
+    errorMessage.value = null;
+
+    try {
+      final response = await http.get(Uri.parse(_apiUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = json.decode(response.body);
+        allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
+
+        final categories = allProducts.map((p) => p.category).toSet().toList();
+        tabs
+          ..clear()
+          ..add('All')
+          ..addAll(categories.map(_titleCase));
+
+        // Re-create TabController only if tab count changed
+        if (tabController.length != tabs.length) {
+          tabController.dispose();
+          tabController = TabController(length: tabs.length, vsync: this);
+        }
+      } else {
+        errorMessage.value = 'Server error: ${response.statusCode}';
+      }
+    } catch (e) {
+      errorMessage.value = 'Failed to load products. Check your connection.';
+    } finally {
+      isRefreshing.value = false; // ← stops the spin animation
+    }
   }
 
   var searchQuery = ''.obs;

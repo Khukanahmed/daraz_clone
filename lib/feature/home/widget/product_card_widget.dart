@@ -1,5 +1,6 @@
 import 'package:daraz_clone/feature/home/controller/home_controller.dart';
 import 'package:daraz_clone/feature/home/model/model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -11,13 +12,28 @@ class ProductGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = Get.find<HomeController>();
     final screenHeight = MediaQuery.of(context).size.height;
-    final itemHeight = screenHeight * 0.30;
+    final itemHeight = screenHeight * 0.28;
 
     return Obx(() {
       final products = ctrl.getProductsForTab(tabIndex);
 
       if (products.isEmpty) {
-        return const Center(child: Text('No products found'));
+        // ← Must be scrollable so RefreshIndicator can detect the pull gesture
+        return CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  ctrl.searchQuery.value.isNotEmpty
+                      ? 'No results for "${ctrl.searchQuery.value}"'
+                      : 'No products found',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+            ),
+          ],
+        );
       }
 
       return GridView.builder(
@@ -31,7 +47,14 @@ class ProductGrid extends StatelessWidget {
           mainAxisSpacing: 10,
           mainAxisExtent: itemHeight,
         ),
-        itemBuilder: (_, index) => ProductCard(product: products[index]),
+        itemBuilder: (_, index) => GestureDetector(
+          onTap: () {
+            if (kDebugMode) {
+              print('Tapped on: ${products[index].title}');
+            }
+          },
+          child: ProductCard(product: products[index]),
+        ),
       );
     });
   }
@@ -48,7 +71,7 @@ class ProductCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6),
         ],
       ),
       child: Column(
@@ -84,7 +107,6 @@ class ProductCard extends StatelessWidget {
             ),
           ),
 
-          // ── Product Info ──
           Expanded(
             flex: 4,
             child: Padding(
@@ -92,16 +114,23 @@ class ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
                   Text(
                     product.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 8),
 
-                  // Rating
+                  Text(
+                    "\$${product.price.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF00B14F),
+                    ),
+                  ),
+
                   Row(
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 14),
@@ -119,35 +148,6 @@ class ProductCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 11,
                           color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Price + Cart Button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "\$${product.price.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Color(0xFF00B14F),
-                        ),
-                      ),
-                      Container(
-                        height: 26,
-                        width: 26,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00B14F),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 16,
                         ),
                       ),
                     ],

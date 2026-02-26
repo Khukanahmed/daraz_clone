@@ -3,6 +3,7 @@ import 'package:daraz_clone/feature/auth/controller/login_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -16,17 +17,10 @@ class LoginScreen extends StatelessWidget {
       body: Center(
         child: Column(
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
-            Image.asset('asset/logo.png', width: 100),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.20),
+            SvgPicture.asset('assets/logo.svg', width: 100),
             SizedBox(height: 16),
-            Text(
-              'SCUBE',
-              style: TextStyle(
-                fontSize: 24,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+
             Text(
               'Control & Monitoring System',
               style: TextStyle(
@@ -35,7 +29,7 @@ class LoginScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 60),
+            SizedBox(height: 80),
             Expanded(
               child: SlideTransition(
                 position: controller.slideAnimation,
