@@ -1,12 +1,18 @@
 import 'package:daraz_clone/feature/home/controller/home_controller.dart';
-import 'package:daraz_clone/feature/home/model/model.dart';
+import 'package:daraz_clone/feature/home/model/product_model.dart';
+import 'package:daraz_clone/feature/home/view/product_descristion.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class ProductGrid extends StatelessWidget {
+/// A pure [SliverGrid] of products for [tabIndex].
+///
+/// Must live inside a [CustomScrollView] — it does NOT own a scroll view or
+/// physics itself.  This is what makes per-tab pull-to-refresh and independent
+/// scroll positions possible inside a [NestedScrollView].
+class ProductSliverGrid extends StatelessWidget {
   final int tabIndex;
-  const ProductGrid({super.key, required this.tabIndex});
+  const ProductSliverGrid({super.key, required this.tabIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -18,33 +24,65 @@ class ProductGrid extends StatelessWidget {
       final products = ctrl.getProductsForTab(tabIndex);
 
       if (products.isEmpty) {
-        return const Center(child: Text('No products found'));
+        return const SliverFillRemaining(
+          child: Center(child: Text('No products found')),
+        );
       }
 
-      return GridView.builder(
-        key: PageStorageKey(tabIndex),
-        physics: const AlwaysScrollableScrollPhysics(),
+      return SliverPadding(
         padding: const EdgeInsets.all(12),
-        itemCount: products.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          mainAxisExtent: itemHeight,
-        ),
-        itemBuilder: (_, index) => GestureDetector(
-          onTap: () {
-            if (kDebugMode) {
-              print('Tapped on: ${products[index].title}');
-            }
-          },
-          child: ProductCard(product: products[index]),
+        sliver: SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (_, index) => GestureDetector(
+              onTap: () {
+                Get.to(
+                  () => ProductDescriptionScreen(),
+                  arguments: products[index].id,
+                );
+              },
+              child: ProductCard(product: products[index]),
+            ),
+            childCount: products.length,
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            mainAxisExtent: itemHeight,
+          ),
         ),
       );
     });
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy name kept so nothing else breaks if it was imported elsewhere.
+// Routes to the new sliver-based implementation via a thin wrapper.
+// ─────────────────────────────────────────────────────────────────────────────
+class ProductGrid extends StatelessWidget {
+  final int tabIndex;
+  const ProductGrid({super.key, required this.tabIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = Get.find<HomeController>();
+    return RefreshIndicator(
+      color: const Color(0xFF00B14F),
+      onRefresh: ctrl.onRefresh,
+      child: CustomScrollView(
+        key: PageStorageKey(tabIndex),
+        controller: ctrl.scrollControllerForTab(tabIndex),
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [ProductSliverGrid(tabIndex: tabIndex)],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ProductCard — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 class ProductCard extends StatelessWidget {
   final Product product;
   const ProductCard({super.key, required this.product});

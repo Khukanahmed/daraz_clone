@@ -1,4 +1,5 @@
 import 'package:daraz_clone/core/nav_bar/controller/navbar_controller.dart';
+import 'package:daraz_clone/feature/account/view/account_screen.dart';
 import 'package:daraz_clone/feature/home/view/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -12,7 +13,7 @@ class NavbarScreen extends StatelessWidget {
     HomeScreen(),
     Center(child: Text("WishList")),
     Center(child: Text("Cart")),
-    Center(child: Text("Account")),
+    ProfileScreen(),
   ];
 
   @override

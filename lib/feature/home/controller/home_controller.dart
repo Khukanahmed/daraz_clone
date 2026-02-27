@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:daraz_clone/feature/home/model/model.dart';
+import 'package:daraz_clone/feature/home/model/product_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -10,9 +11,11 @@ class HomeController extends GetxController
 
   final List<String> tabs = [];
   var isLoading = true.obs;
-  var isRefreshing = false.obs; // ← drives the spin animation
+  var isRefreshing = false.obs;
   var errorMessage = Rxn<String>();
   var allProducts = <Product>[].obs;
+
+  final List<ScrollController> tabScrollControllers = [];
 
   static const String _apiUrl = 'https://fakestoreapi.com/products';
 
@@ -25,51 +28,39 @@ class HomeController extends GetxController
   @override
   void onClose() {
     tabController.dispose();
+    for (final sc in tabScrollControllers) {
+      sc.dispose();
+    }
     super.onClose();
   }
 
-  void startRefreshAnimation() {
-    isRefreshing.value = true;
+  ScrollController scrollControllerForTab(int tabIndex) {
+    while (tabScrollControllers.length <= tabIndex) {
+      tabScrollControllers.add(ScrollController());
+    }
+    return tabScrollControllers[tabIndex];
   }
 
-  Future<void> fetchProducts() async {
-    isLoading.value = true;
-    errorMessage.value = null;
-
-    try {
-      final response = await http.get(Uri.parse(_apiUrl));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body);
-        allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
-
-        final categories = allProducts.map((p) => p.category).toSet().toList();
-
-        tabs
-          ..clear()
-          ..add('All')
-          ..addAll(categories.map(_titleCase));
-
-        tabController = TabController(length: tabs.length, vsync: this);
-        isLoading.value = false;
-      } else {
-        errorMessage.value = 'Server error: ${response.statusCode}';
-        isLoading.value = false;
-      }
-    } catch (e) {
-      errorMessage.value = 'Failed to load products. Check your connection.';
-      isLoading.value = false;
+  void _rebuildScrollControllers(int tabCount) {
+    while (tabScrollControllers.length > tabCount) {
+      tabScrollControllers.removeLast().dispose();
+    }
+    while (tabScrollControllers.length < tabCount) {
+      tabScrollControllers.add(ScrollController());
     }
   }
 
-  Future<void> onRefresh() async {
-    isRefreshing.value = true;
+  Future<void> fetchProducts({bool isRefresh = false}) async {
+    isLoading.value = !isRefresh;
+    isRefreshing.value = isRefresh;
     errorMessage.value = null;
 
     try {
       final response = await http.get(Uri.parse(_apiUrl));
-
       if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Raw response: ${response.body}');
+        }
         final List<dynamic> jsonList = json.decode(response.body);
         allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
 
@@ -79,10 +70,20 @@ class HomeController extends GetxController
           ..add('All')
           ..addAll(categories.map(_titleCase));
 
-        // Re-create TabController only if tab count changed
-        if (tabController.length != tabs.length) {
-          tabController.dispose();
+        if (isRefresh) {
+          final prevIndex = tabController.index;
+          if (tabController.length != tabs.length) {
+            tabController.dispose();
+            tabController = TabController(
+              length: tabs.length,
+              vsync: this,
+              initialIndex: prevIndex.clamp(0, tabs.length - 1),
+            );
+            _rebuildScrollControllers(tabs.length);
+          }
+        } else {
           tabController = TabController(length: tabs.length, vsync: this);
+          _rebuildScrollControllers(tabs.length);
         }
       } else {
         errorMessage.value = 'Server error: ${response.statusCode}';
@@ -90,8 +91,13 @@ class HomeController extends GetxController
     } catch (e) {
       errorMessage.value = 'Failed to load products. Check your connection.';
     } finally {
-      isRefreshing.value = false; // ← stops the spin animation
+      isLoading.value = false;
+      isRefreshing.value = false;
     }
+  }
+
+  Future<void> onRefresh() async {
+    await fetchProducts(isRefresh: true);
   }
 
   var searchQuery = ''.obs;

@@ -1,9 +1,11 @@
+import 'package:daraz_clone/core/colors/app_colors.dart';
 import 'package:daraz_clone/feature/auth/view/login_screen.dart';
 import 'package:daraz_clone/feature/home/widget/product_card_widget.dart';
 import 'package:daraz_clone/feature/home/widget/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/home_controller.dart';
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
@@ -26,17 +28,30 @@ class HomeScreen extends StatelessWidget {
           }
 
           return NestedScrollView(
+            // ── The absorber handle lets each tab re-claim the header height
+            // so the SliverPersistentHeader (tab bar) stays pinned and the
+            // inner list starts below it — not behind it.
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: const [
-                    SizedBox(height: 12),
-                    _SearchBar(),
-                    _FlashSaleBanner(),
-                  ],
+              // Absorber wraps ALL content above the tab bar.  The injector
+              // in every tab's CustomScrollView injects back the same amount
+              // of space so content is never hidden under the pinned bar.
+              SliverOverlapAbsorber(
+                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                  context,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    children: const [
+                      SizedBox(height: 12),
+                      _SearchBar(),
+                      _FlashSaleBanner(),
+                    ],
+                  ),
                 ),
               ),
 
+              // Pinned tab bar — never scrolls off-screen once the header
+              // has been scrolled past.
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarDelegate(
@@ -54,11 +69,13 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
 
+            // Each tab is a Builder so it can read the absorber handle, then
+            // wraps its CustomScrollView in a RefreshIndicator for PTR.
             body: TabBarView(
               controller: controller.tabController,
               children: List.generate(
                 controller.tabs.length,
-                (i) => ProductGrid(tabIndex: i),
+                (i) => _TabBody(tabIndex: i),
               ),
             ),
           );
@@ -68,6 +85,149 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _TabBody
+//
+// One per tab.  Responsibilities:
+//   • Expose a RefreshIndicator (pull-to-refresh on every tab)
+//   • Use the per-tab ScrollController from HomeController so the scroll
+//     position is preserved when the user switches tabs
+//   • Inject the absorbed overlap back at the top so content is never hidden
+//     behind the pinned tab bar
+// ─────────────────────────────────────────────────────────────────────────────
+class _TabBody extends StatelessWidget {
+  final int tabIndex;
+  const _TabBody({required this.tabIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = Get.find<HomeController>();
+
+    return Builder(
+      builder: (innerContext) {
+        return CustomRefreshIndicator(
+          onRefresh: ctrl.onRefresh,
+          offsetToArmed: 80, // কতটুকু টানলে "release" mode হবে
+          builder: (context, child, controller) {
+            return Stack(
+              children: [
+                // ── Pull করলে উপরে যতটুকু নামে ততটুকু ──
+                AnimatedBuilder(
+                  animation: controller,
+                  builder: (_, __) {
+                    final offset = controller.value * 80.0;
+                    return Transform.translate(
+                      offset: Offset(0, offset),
+                      child: child,
+                    );
+                  },
+                ),
+
+                // ── Top-এ Daraz-style indicator ──
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedBuilder(
+                    animation: controller,
+                    builder: (_, __) {
+                      final opacity = controller.value.clamp(0.0, 1.0);
+                      final isLoading = controller.state.isLoading;
+
+                      return Opacity(
+                        opacity: opacity,
+                        child: Container(
+                          color: const Color(0xFFF5F5F5),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Orange circle with logo
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primaryColor,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: isLoading
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.shopping_bag,
+                                        color: Colors.white,
+                                        size: 26,
+                                      ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              // >> Release to refresh text
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (!isLoading) ...[
+                                    const Icon(
+                                      Icons.keyboard_double_arrow_down,
+                                      size: 14,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    isLoading
+                                        ? 'Loading...'
+                                        : 'Release to refresh',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+          child: CustomScrollView(
+            key: PageStorageKey<int>(tabIndex),
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverOverlapInjector(
+                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                  innerContext,
+                ),
+              ),
+              ProductSliverGrid(tabIndex: tabIndex),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _TabBarDelegate — pins the TabBar to the top once scrolled past the header
+// ─────────────────────────────────────────────────────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   const _TabBarDelegate(this.tabBar);
@@ -80,13 +240,21 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    return Container(color: Colors.white, child: tabBar);
+    // Surface elevation shadow when the header is overlapped to signal depth.
+    return Material(
+      elevation: overlaps ? 2.0 : 0.0,
+      color: Colors.white,
+      child: tabBar,
+    );
   }
 
   @override
-  bool shouldRebuild(_) => false;
+  bool shouldRebuild(_TabBarDelegate old) => old.tabBar != tabBar;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _SearchBar
+// ─────────────────────────────────────────────────────────────────────────────
 class _SearchBar extends StatelessWidget {
   const _SearchBar();
 
@@ -180,12 +348,12 @@ class _WelcomeCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             backgroundColor: Color(0xFFE8F5E9),
             child: Icon(Icons.person, color: Color(0xFF00B14F)),
           ),
-          SizedBox(width: 12),
-          Expanded(
+          const SizedBox(width: 12),
+          const Expanded(
             child: Text(
               "Welcome Back!",
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -194,7 +362,7 @@ class _WelcomeCard extends StatelessWidget {
 
           GestureDetector(
             onTap: () => Get.to(() => LoginScreen()),
-            child: Text(
+            child: const Text(
               "Login",
               style: TextStyle(
                 color: Color(0xFF00B14F),
@@ -203,7 +371,7 @@ class _WelcomeCard extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
         ],
       ),
     );

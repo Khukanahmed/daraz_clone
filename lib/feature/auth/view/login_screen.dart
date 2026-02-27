@@ -17,12 +17,29 @@ class LoginScreen extends StatelessWidget {
       body: Center(
         child: Column(
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.20),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Align(
+                alignment: AlignmentGeometry.topLeft,
+                child: GestureDetector(
+                  onTap: () {
+                    Get.back();
+                  },
+                  child: Icon(
+                    Icons.cancel_outlined,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.05),
             SvgPicture.asset('assets/logo.svg', width: 100),
             SizedBox(height: 16),
 
             Text(
-              'Control & Monitoring System',
+              'Smart Service Hub',
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.white,
