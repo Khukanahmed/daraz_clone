@@ -8,9 +8,9 @@ A production-ready e-commerce app clone built with Flutter & GetX, featuring a c
 
 > _Add your screenshots here after running the app._
 
-| Home Screen | Product Detail | Search |
-|:-----------:|:--------------:|:------:|
-| https://drive.google.com/file/d/1gqurt0OvDGFugv1xXnigrb7Vs5My8NzQ/view?usp=sharing | https://drive.google.com/file/d/1CgqQSuEWm6zCqESC44BL3IMcUB4dLFCl/view?usp=sharing| https://drive.google.com/file/d/1n8tA_eiPcbEfNApO1R_6JDWP4E3aopsN/view?usp=sharing |
+| Home Screen | Product Detail | Search | Pull-to-refresh |
+|:-----------:|:--------------:|:------:| :--------------:
+| https://drive.google.com/file/d/1gqurt0OvDGFugv1xXnigrb7Vs5My8NzQ/view?usp=sharing | https://drive.google.com/file/d/1n8tA_eiPcbEfNApO1R_6JDWP4E3aopsN/view?usp=sharing| https://drive.google.com/file/d/1FlX3yHishFPwMEIAa96RZpgesiUJoYT6/view?usp=sharing |  https://drive.google.com/file/d/1lcapTb5RXMZ7RSBsUmqg-XrzdVk9kQZ1/view?usp=sharing |
 
 ---
 
