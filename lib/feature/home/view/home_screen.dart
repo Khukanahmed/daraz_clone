@@ -28,13 +28,7 @@ class HomeScreen extends StatelessWidget {
           }
 
           return NestedScrollView(
-            // ── The absorber handle lets each tab re-claim the header height
-            // so the SliverPersistentHeader (tab bar) stays pinned and the
-            // inner list starts below it — not behind it.
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              // Absorber wraps ALL content above the tab bar.  The injector
-              // in every tab's CustomScrollView injects back the same amount
-              // of space so content is never hidden under the pinned bar.
               SliverOverlapAbsorber(
                 handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
                   context,
@@ -50,8 +44,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // Pinned tab bar — never scrolls off-screen once the header
-              // has been scrolled past.
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarDelegate(
@@ -69,8 +61,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
 
-            // Each tab is a Builder so it can read the absorber handle, then
-            // wraps its CustomScrollView in a RefreshIndicator for PTR.
             body: TabBarView(
               controller: controller.tabController,
               children: List.generate(
@@ -85,16 +75,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _TabBody
-//
-// One per tab.  Responsibilities:
-//   • Expose a RefreshIndicator (pull-to-refresh on every tab)
-//   • Use the per-tab ScrollController from HomeController so the scroll
-//     position is preserved when the user switches tabs
-//   • Inject the absorbed overlap back at the top so content is never hidden
-//     behind the pinned tab bar
-// ─────────────────────────────────────────────────────────────────────────────
 class _TabBody extends StatelessWidget {
   final int tabIndex;
   const _TabBody({required this.tabIndex});
@@ -107,11 +87,10 @@ class _TabBody extends StatelessWidget {
       builder: (innerContext) {
         return CustomRefreshIndicator(
           onRefresh: ctrl.onRefresh,
-          offsetToArmed: 80, // কতটুকু টানলে "release" mode হবে
+          offsetToArmed: 80,
           builder: (context, child, controller) {
             return Stack(
               children: [
-                // ── Pull করলে উপরে যতটুকু নামে ততটুকু ──
                 AnimatedBuilder(
                   animation: controller,
                   builder: (_, __) {
@@ -142,7 +121,6 @@ class _TabBody extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Orange circle with logo
                               Container(
                                 width: 48,
                                 height: 48,
@@ -225,9 +203,6 @@ class _TabBody extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _TabBarDelegate — pins the TabBar to the top once scrolled past the header
-// ─────────────────────────────────────────────────────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   const _TabBarDelegate(this.tabBar);
@@ -240,7 +215,6 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    // Surface elevation shadow when the header is overlapped to signal depth.
     return Material(
       elevation: overlaps ? 2.0 : 0.0,
       color: Colors.white,
@@ -252,9 +226,6 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarDelegate old) => old.tabBar != tabBar;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _SearchBar
-// ─────────────────────────────────────────────────────────────────────────────
 class _SearchBar extends StatelessWidget {
   const _SearchBar();
 

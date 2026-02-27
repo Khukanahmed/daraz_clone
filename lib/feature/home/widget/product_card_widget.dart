@@ -1,7 +1,6 @@
 import 'package:daraz_clone/feature/home/controller/home_controller.dart';
 import 'package:daraz_clone/feature/home/model/product_model.dart';
 import 'package:daraz_clone/feature/home/view/product_descristion.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:daraz_clone/feature/home/model/product_description_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
@@ -35,7 +36,9 @@ class ProductDescriptionController extends GetxController {
         product.value = ProductDescription.fromJson(data);
       }
     } catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     } finally {
       isLoading.value = false;
     }
