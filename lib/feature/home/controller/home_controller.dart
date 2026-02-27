@@ -40,7 +40,6 @@ class HomeController extends GetxController
       final response = await http.get(Uri.parse(_apiUrl));
 
       if (response.statusCode == 200) {
-        print('Raw response: ${response.body}'); // ← Debug log
         final List<dynamic> jsonList = json.decode(response.body);
         allProducts.value = jsonList.map((j) => Product.fromJson(j)).toList();
 

@@ -22,68 +22,45 @@ class HomeScreen extends StatelessWidget {
           }
 
           if (controller.errorMessage.value != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(controller.errorMessage.value!),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: controller.onRefresh,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00B14F),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            );
+            return Center(child: Text(controller.errorMessage.value!));
           }
 
-          return Column(
-            children: [
-              const SizedBox(height: 12),
-              const _SearchBar(),
-              const _FlashSaleBanner(),
-
-              // ── Tab Bar ──────────────────────────────────────────────
-              Container(
-                color: Colors.white,
-                child: TabBar(
-                  controller: controller.tabController,
-                  isScrollable: true,
-                  padding: EdgeInsets.zero,
-                  tabAlignment: TabAlignment.start,
-                  labelColor: const Color(0xFF00B14F),
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: const Color(0xFF00B14F),
-                  tabs: controller.tabs.map((e) => Tab(text: e)).toList(),
+          return NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: const [
+                    SizedBox(height: 12),
+                    _SearchBar(),
+                    _FlashSaleBanner(),
+                  ],
                 ),
               ),
 
-              // ── Tab Content with RefreshIndicator ────────────────────
-              Expanded(
-                child: TabBarView(
-                  controller: controller.tabController,
-                  children: List.generate(
-                    controller.tabs.length,
-                    (i) => RefreshIndicator(
-                      color: const Color(0xFF00B14F),
-                      // physics must allow overscroll for pull-to-refresh
-                      notificationPredicate: (notification) =>
-                          notification.depth == 0,
-                      onRefresh: () async {
-                        controller.startRefreshAnimation();
-                        await controller.onRefresh();
-                      },
-                      child: ProductGrid(tabIndex: i),
-                    ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabBarDelegate(
+                  TabBar(
+                    controller: controller.tabController,
+                    isScrollable: true,
+                    padding: EdgeInsets.zero,
+                    tabAlignment: TabAlignment.start,
+                    labelColor: const Color(0xFF00B14F),
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: const Color(0xFF00B14F),
+                    tabs: controller.tabs.map((e) => Tab(text: e)).toList(),
                   ),
                 ),
               ),
             ],
+
+            body: TabBarView(
+              controller: controller.tabController,
+              children: List.generate(
+                controller.tabs.length,
+                (i) => ProductGrid(tabIndex: i),
+              ),
+            ),
           );
         }),
       ),
@@ -91,7 +68,24 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ─── Search Bar ──────────────────────────────────────────────────────────────
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+  const _TabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
+    return Container(color: Colors.white, child: tabBar);
+  }
+
+  @override
+  bool shouldRebuild(_) => false;
+}
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar();
@@ -131,19 +125,10 @@ class _SearchBar extends StatelessWidget {
                   ),
                 ),
               ),
-              // Show clear button when searching, refresh icon otherwise
               if (ctrl.searchQuery.value.isNotEmpty)
                 GestureDetector(
                   onTap: ctrl.clearSearch,
                   child: const Icon(Icons.close, color: Colors.grey, size: 18),
-                )
-              else
-                GestureDetector(
-                  onTap: () async {
-                    ctrl.startRefreshAnimation();
-                    await ctrl.onRefresh();
-                  },
-                  child: const _SpinningRefreshIcon(),
                 ),
             ],
           ),
@@ -152,55 +137,6 @@ class _SearchBar extends StatelessWidget {
     );
   }
 }
-
-// ─── Spinning Refresh Icon ───────────────────────────────────────────────────
-
-class _SpinningRefreshIcon extends StatefulWidget {
-  const _SpinningRefreshIcon();
-
-  @override
-  State<_SpinningRefreshIcon> createState() => _SpinningRefreshIconState();
-}
-
-class _SpinningRefreshIconState extends State<_SpinningRefreshIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _anim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-
-    ever(Get.find<HomeController>().isRefreshing, (bool refreshing) {
-      if (!mounted) return;
-      if (refreshing) {
-        _anim.repeat();
-      } else {
-        _anim.stop();
-        _anim.animateTo(0, duration: const Duration(milliseconds: 150));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _anim,
-      child: const Icon(Icons.refresh, color: Color(0xFF00B14F), size: 20),
-    );
-  }
-}
-
-// ─── Flash Sale Banner ───────────────────────────────────────────────────────
 
 class _FlashSaleBanner extends StatelessWidget {
   const _FlashSaleBanner();
@@ -230,8 +166,6 @@ class _FlashSaleBanner extends StatelessWidget {
   }
 }
 
-// ─── Welcome Card ────────────────────────────────────────────────────────────
-
 class _WelcomeCard extends StatelessWidget {
   const _WelcomeCard();
 
@@ -246,20 +180,21 @@ class _WelcomeCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             backgroundColor: Color(0xFFE8F5E9),
             child: Icon(Icons.person, color: Color(0xFF00B14F)),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
               "Welcome Back!",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
+
           GestureDetector(
             onTap: () => Get.to(() => LoginScreen()),
-            child: const Text(
+            child: Text(
               "Login",
               style: TextStyle(
                 color: Color(0xFF00B14F),
@@ -268,7 +203,7 @@ class _WelcomeCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
       ),
     );

@@ -18,22 +18,7 @@ class ProductGrid extends StatelessWidget {
       final products = ctrl.getProductsForTab(tabIndex);
 
       if (products.isEmpty) {
-        // ← Must be scrollable so RefreshIndicator can detect the pull gesture
-        return CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverFillRemaining(
-              child: Center(
-                child: Text(
-                  ctrl.searchQuery.value.isNotEmpty
-                      ? 'No results for "${ctrl.searchQuery.value}"'
-                      : 'No products found',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-          ],
-        );
+        return const Center(child: Text('No products found'));
       }
 
       return GridView.builder(
